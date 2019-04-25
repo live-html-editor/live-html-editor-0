@@ -3,7 +3,7 @@
  * Created on 1398/1/29 (2019/4/18).
  */
 
-export const TOOLS_POSITION = 'tools-position';
+export const TOOLS_POSITION = 'LHE:tools-position';
 
 /**
  * https://stackoverflow.com/a/7290395/5318303
@@ -153,4 +153,32 @@ export function getDomPath(el: any) {
 
 export function setCookie(key: string, value: string, expireTime: (now: Date) => number) {
 	document.cookie = `${key}=${value}; expires=${new Date(expireTime(new Date())).toUTCString()}`;
+}
+
+/**
+ * Function that count occurrences of a substring in a string;
+ * @param {String} string               The string
+ * @param {String} subString            The sub string to search for
+ * @param {Boolean} [allowOverlapping]  Optional. (Default:false)
+ *
+ * @author Vitim.us https://gist.github.com/victornpb/7736865
+ * @see Unit Test https://jsfiddle.net/Victornpb/5axuh96u/
+ * @see http://stackoverflow.com/questions/4009756/how-to-count-string-occurrence-in-string/7924240#7924240
+ */
+export function countOccurrences(string: string, subString: string, allowOverlapping = false) {
+	if (subString.length === 0) return string.length + 1;
+	
+	let n = 0;
+	let pos = 0;
+	const step = allowOverlapping ? 1 : subString.length;
+	
+	while (true) {
+		pos = string.indexOf(subString, pos);
+		if (pos === -1) break;
+		
+		++n;
+		pos += step;
+	}
+	
+	return n;
 }

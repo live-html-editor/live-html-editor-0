@@ -1,6 +1,7 @@
 import {Draggable, getCookie, setCookie, TOOLS_POSITION} from './utilities';
 import {styleSheet} from './css';
 import {htmlSourceOfTools} from './html';
+import {BeautifyHtml, CodeStyle, DEF_CODE_STYLE, initCodeStyle} from "./BeautifyHtml";
 
 /**
  * @author [S. Mahdi Mir-Ismaili](https://mirismaili.github.io).
@@ -8,26 +9,23 @@ import {htmlSourceOfTools} from './html';
  */
 
 class EditorManager implements Options {
-	indent: string;
 	serverUrl: string;
+	codeStyle: CodeStyle;
 	sourceFiles: SourceFile[];
 	
+	private formHtml: BeautifyHtml;
 	private tools: any;
 	private toolsContainer: any;
 	private styles: HTMLStyleElement;
 	private readonly editors: Editor[] = [];
 	private idAttr = '[data-live-editor]';
 	
-	static readonly DEF_OPTIONS: Options = {
-		indent: '\t',
-		serverUrl: 'http://127.0.0.1:3000',
-		sourceFiles: []
-	};
-	
-	config(options: Options = EditorManager.DEF_OPTIONS) {
-		this.indent = options.indent || EditorManager.DEF_OPTIONS.indent;
-		this.serverUrl = options.serverUrl || EditorManager.DEF_OPTIONS.serverUrl;
-		this.sourceFiles = options.sourceFiles || EditorManager.DEF_OPTIONS.sourceFiles;
+	// noinspection JSUnusedGlobalSymbols
+	config(options: Options = DEF_OPTIONS) {
+		initOptions(this, options);
+
+		this.formHtml = new BeautifyHtml(this.codeStyle);
+		
 		//**********************************************************************************/
 		
 		let editables = document.querySelectorAll(this.idAttr);
@@ -53,6 +51,7 @@ class EditorManager implements Options {
 		this.toolsContainer = template.content.firstChild;
 	}
 	
+	// noinspection JSUnusedGlobalSymbols
 	start() {
 		document.getElementsByTagName('head')[0].appendChild(this.styles);
 		
@@ -79,21 +78,24 @@ class EditorManager implements Options {
 			(<any>editor.editable).contentEditable = true;
 	}
 	
+	// noinspection JSUnusedGlobalSymbols
 	shutdown() {
 		for (const editor of this.editors)
 			(<any>editor.editable).contentEditable = false;
+		
 		document.body.removeChild(this.toolsContainer);
-
+		
 		document.getElementsByTagName('head')[0].removeChild(this.styles);
 	}
 	
 	submit(editor: Editor): void {
 		const editable = editor.editable;
+		this.formHtml.form(editable);
 		
 		if (!this.validateMode(editable)) return;
-		console.dir(this.sourceFiles[0].domPath);
+
 		const req: Req = {
-			htmlDocument: this.formHtml(editable.innerHTML).trim(),
+			htmlDocument: editable.innerHTML.trim(),
 			
 			sourceFiles: this.sourceFiles.map(sourceFile => ({
 				path: sourceFile.path,
@@ -139,13 +141,15 @@ class EditorManager implements Options {
 		for (const editor of this.editors) {
 			const editable = editor.editable;
 			
-			const source = this.formHtml(editable.innerHTML);
-			const oContent = document.createRange();
-			oContent.selectNodeContents(editable.firstChild);
-			
-			//const oContent = document.createTextNode(source);
 			(<any>editable).contentEditable = false;
+			this.formHtml.form(editable);
+			const source = editable.innerHTML;
 			editable.innerHTML = '';
+			
+			// const oContent = document.createRange();
+			// oContent.selectNodeContents(editable.firstChild);
+			//const oContent = document.createTextNode(source);
+			
 			const oSourcePreview = document.createElement('pre');
 			oSourcePreview.setAttribute('dir', 'auto');
 			oSourcePreview.className = 'editable-source';
@@ -174,58 +178,101 @@ class EditorManager implements Options {
 		}
 	}
 	
-	formHtml(str: string) {
-		const div = document.createElement('div');
-		div.innerHTML = str.trim();
-		
-		const nudeNodes = [];
-		const childNodes = div.childNodes;
-		const l = childNodes.length; //console.log(l);
-		
-		for (let i = 1; i < l; ++i) {
-			const node = childNodes[i]; //console.log(i); console.log(node);
-			
-			if (node.nodeType === Node.TEXT_NODE) {
-				++i;
-				continue;
-			}
-			nudeNodes.push(node);
-		}
-		
-		for (const node of childNodes) {
-			if (node.nodeType === Node.ELEMENT_NODE) {
-				const nodeName = node.nodeName;
-				if (nodeName === 'P' || /^H[123456]$/.test(nodeName) || nodeName === 'BLOCKQUOTE' || nodeName === 'UL' || nodeName === 'OL') {
-					const el = (<HTMLElement>node);
-					const innerHTML = el.innerHTML;
-					
-					if (innerHTML !== '') {
-						const start = /^\s*/.exec(innerHTML)[0];
-						const end = /\s*$/.exec(innerHTML)[0];
-						const pre = '\n' + this.indent;
-						const suf = '\n';
-						if (start !== pre || end !== suf)
-							el.innerHTML = pre + innerHTML.substring(start.length, innerHTML.length - end.length) + suf;
-					}
-				}
-			}
-		}
-		
-		// const length = nudeNodes.length;
-		// for (let i = 1; i < length; ++i)
-		for (const nudeNode of nudeNodes)
-			div.insertBefore(document.createTextNode('\n\n'), nudeNode);
-		
-		return div.innerHTML;
-	}
+	// private formR(node: HTMLElement, indent: string) {
+	// 	const newIndent = indent + this.indent;
+	//
+	// 	const nodeName = node.nodeName;
+	//
+	// 	if (/^(?:P|H[123456]|BLOCKQUOTE|[UO]L|LI)$/.test(nodeName)) {
+	// 		// 1. Beautify after-start-tag and before-end-tag:
+	// 		const innerHTML = child.innerHTML;
+	// 		if (innerHTML === '') continue;
+	//
+	// 		let match = /^\s*/.exec(innerHTML);
+	// 		const start = match === null ? '' : match[0];
+	//
+	// 		match = /\s*$/.exec(innerHTML);
+	// 		const end = match === null ? '' : match[0];
+	//
+	// 		const pre = '\n' + newIndent;
+	// 		const suf = '\n' + indent;
+	//
+	// 		if (start !== pre || end !== suf)
+	// 			child.innerHTML = pre + innerHTML.substring(start.length, innerHTML.length - end.length) + suf;
+	//
+	// 		// 2. Beautify remainder innerHTML:
+	// 		child.childNodes.
+	// 	}
+	//
+	// 	const nudeNodes = [];
+	// 	const childNodes = node.childNodes;
+	// 	const l = childNodes.length; //console.log(l);
+	//
+	// 	for (let i = 1; i < l; ++i) {
+	// 		const node = childNodes[i]; //console.log(i); console.log(node);
+	//
+	// 		if (node.nodeType === Node.TEXT_NODE) {
+	// 			++i;
+	// 			continue;
+	// 		}
+	// 		nudeNodes.push(node);
+	// 	}
+	//
+	// 	const children = node.children;
+	// 	for (const child of children) {
+	// 		const nodeName = child.nodeName;
+	//
+	// 		if (/^(?:P|H[123456]|BLOCKQUOTE|[UO]L|LI)$/.test(nodeName)) {
+	// 			// 1. Beautify after-start-tag and before-end-tag:
+	// 			const innerHTML = child.innerHTML;
+	// 			if (innerHTML === '') continue;
+	//
+	// 			let match = /^\s*/.exec(innerHTML);
+	// 			const start = match === null ? '' : match[0];
+	//
+	// 			match = /\s*$/.exec(innerHTML);
+	// 			const end = match === null ? '' : match[0];
+	//
+	// 			const pre = '\n' + newIndent;
+	// 			const suf = '\n' + indent;
+	//
+	// 			if (start !== pre || end !== suf)
+	// 				child.innerHTML = pre + innerHTML.substring(start.length, innerHTML.length - end.length) + suf;
+	//
+	// 			// 2. Beautify remainder innerHTML:
+	// 			child.childNodes.
+	// 		}
+	// 	}
+	//
+	// 	// const length = nudeNodes.length;
+	// 	// for (let i = 1; i < length; ++i)
+	// 	for (const nudeNode of nudeNodes)
+	// 		node.insertBefore(document.createTextNode('\n\n'), nudeNode);
+	// }
 }
 
 export const editorManager = new EditorManager();
 
 interface Options {
-	indent: string;
-	serverUrl: string;
+	serverUrl  : string;
+	codeStyle  : CodeStyle;
 	sourceFiles: SourceFile[];
+}
+
+export const DEF_OPTIONS: Options = {
+	serverUrl  : 'http://127.0.0.1:3000',
+	codeStyle  : DEF_CODE_STYLE,
+	sourceFiles: [],
+};
+
+export function initOptions(target: Options, source: Options) {
+	target.serverUrl   = source.serverUrl   || DEF_OPTIONS.serverUrl  ;
+	target.sourceFiles = source.sourceFiles || DEF_OPTIONS.sourceFiles;
+	
+	if (source.codeStyle)
+		initCodeStyle(target.codeStyle, source.codeStyle);
+	else
+		target.codeStyle = DEF_OPTIONS.codeStyle;
 }
 
 interface SourceFile {
