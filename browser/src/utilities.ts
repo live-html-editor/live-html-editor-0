@@ -156,6 +156,26 @@ export function setCookie(key: string, value: string, expireTime: (now: Date) =>
 }
 
 /**
+ * https://stackoverflow.com/a/55859966/5318303
+ */
+export function getOpenTag(element: HTMLElement): string {
+	const outerHtml = element.outerHTML;
+	const len = outerHtml.length;
+	
+	const openTagLength = outerHtml[len - 2] === '/' ? // Is self-closing tag?
+			len :
+			len - element.innerHTML.length - (element.tagName.length + 3);
+	// As @sus said, (element.tagName.length + 3) is the length of closing tag. It's always `</${tagName}>`. Correct?
+	
+	return outerHtml.slice(0, openTagLength);
+}
+
+/**
+ * @deprecated **Use `.split()` instead**. See:
+ * {@link https://stackoverflow.com/questions/4009756/how-to-count-string-occurrence-in-string/7924240#comment49051171_4009756}
+ * and
+ * {@link http://jsperf.com/string-ocurrence-split-vs-match/2}
+ *
  * Function that count occurrences of a substring in a string;
  * @param {String} string               The string
  * @param {String} subString            The sub string to search for

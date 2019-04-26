@@ -13,7 +13,7 @@ class EditorManager implements Options {
 	codeStyle: CodeStyle;
 	sourceFiles: SourceFile[];
 	
-	private formHtml: BeautifyHtml;
+	private beautifier: BeautifyHtml;
 	private tools: any;
 	private toolsContainer: any;
 	private styles: HTMLStyleElement;
@@ -24,7 +24,7 @@ class EditorManager implements Options {
 	config(options: Options = DEF_OPTIONS) {
 		initOptions(this, options);
 
-		this.formHtml = new BeautifyHtml(this.codeStyle);
+		this.beautifier = new BeautifyHtml(this.codeStyle);
 		
 		//**********************************************************************************/
 		
@@ -90,12 +90,12 @@ class EditorManager implements Options {
 	
 	submit(editor: Editor): void {
 		const editable = editor.editable;
-		this.formHtml.form(editable);
+		const beatifiedHtml = this.beautifier.beautify(editable);
 		
 		if (!this.validateMode(editable)) return;
 
 		const req: Req = {
-			htmlDocument: editable.innerHTML.trim(),
+			htmlDocument: beatifiedHtml,
 			
 			sourceFiles: this.sourceFiles.map(sourceFile => ({
 				path: sourceFile.path,
@@ -142,8 +142,7 @@ class EditorManager implements Options {
 			const editable = editor.editable;
 			
 			(<any>editable).contentEditable = false;
-			this.formHtml.form(editable);
-			const source = editable.innerHTML;
+			const source = this.beautifier.beautify(editable);
 			editable.innerHTML = '';
 			
 			// const oContent = document.createRange();
@@ -177,78 +176,6 @@ class EditorManager implements Options {
 			editable.focus();
 		}
 	}
-	
-	// private formR(node: HTMLElement, indent: string) {
-	// 	const newIndent = indent + this.indent;
-	//
-	// 	const nodeName = node.nodeName;
-	//
-	// 	if (/^(?:P|H[123456]|BLOCKQUOTE|[UO]L|LI)$/.test(nodeName)) {
-	// 		// 1. Beautify after-start-tag and before-end-tag:
-	// 		const innerHTML = child.innerHTML;
-	// 		if (innerHTML === '') continue;
-	//
-	// 		let match = /^\s*/.exec(innerHTML);
-	// 		const start = match === null ? '' : match[0];
-	//
-	// 		match = /\s*$/.exec(innerHTML);
-	// 		const end = match === null ? '' : match[0];
-	//
-	// 		const pre = '\n' + newIndent;
-	// 		const suf = '\n' + indent;
-	//
-	// 		if (start !== pre || end !== suf)
-	// 			child.innerHTML = pre + innerHTML.substring(start.length, innerHTML.length - end.length) + suf;
-	//
-	// 		// 2. Beautify remainder innerHTML:
-	// 		child.childNodes.
-	// 	}
-	//
-	// 	const nudeNodes = [];
-	// 	const childNodes = node.childNodes;
-	// 	const l = childNodes.length; //console.log(l);
-	//
-	// 	for (let i = 1; i < l; ++i) {
-	// 		const node = childNodes[i]; //console.log(i); console.log(node);
-	//
-	// 		if (node.nodeType === Node.TEXT_NODE) {
-	// 			++i;
-	// 			continue;
-	// 		}
-	// 		nudeNodes.push(node);
-	// 	}
-	//
-	// 	const children = node.children;
-	// 	for (const child of children) {
-	// 		const nodeName = child.nodeName;
-	//
-	// 		if (/^(?:P|H[123456]|BLOCKQUOTE|[UO]L|LI)$/.test(nodeName)) {
-	// 			// 1. Beautify after-start-tag and before-end-tag:
-	// 			const innerHTML = child.innerHTML;
-	// 			if (innerHTML === '') continue;
-	//
-	// 			let match = /^\s*/.exec(innerHTML);
-	// 			const start = match === null ? '' : match[0];
-	//
-	// 			match = /\s*$/.exec(innerHTML);
-	// 			const end = match === null ? '' : match[0];
-	//
-	// 			const pre = '\n' + newIndent;
-	// 			const suf = '\n' + indent;
-	//
-	// 			if (start !== pre || end !== suf)
-	// 				child.innerHTML = pre + innerHTML.substring(start.length, innerHTML.length - end.length) + suf;
-	//
-	// 			// 2. Beautify remainder innerHTML:
-	// 			child.childNodes.
-	// 		}
-	// 	}
-	//
-	// 	// const length = nudeNodes.length;
-	// 	// for (let i = 1; i < length; ++i)
-	// 	for (const nudeNode of nudeNodes)
-	// 		node.insertBefore(document.createTextNode('\n\n'), nudeNode);
-	// }
 }
 
 export const editorManager = new EditorManager();

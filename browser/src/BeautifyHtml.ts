@@ -1,45 +1,56 @@
+import {TextWrap, WrapStyle} from "./TextWrap";
+import {getOpenTag} from "./utilities";
+
 /**
  * @author [S. Mahdi Mir-Ismaili](https://mirismaili.github.io).
  * Created on 1398/2/5 (2019/4/25).
  */
-import {countOccurrences} from "./utilities";
 
 export class BeautifyHtml implements CodeStyle {
 	private static readonly BLOCKS = /^(?:P|H[123456]|BLOCKQUOTE|[UO]L|LI|DIV)$/;
-	
-	private readonly textWrap: TextWrap;
-	
-	readonly indent                  : string;
-	readonly continuationIndent      : string;
-	readonly keepIntentsOnEmptyLines : boolean;
-	readonly emptyLinesBetweenBlocks : number;
-	readonly tabLength               : number;
-	readonly wrapOn                  : number;
-	
 	//private static readonly TEXT_OR_INLINE = /^(?:#text|[BIA]|CODE|FONT|SPAN)$/;
+	
+	private readonly wrapper: TextWrap;
+	
+	// noinspection JSUnusedGlobalSymbols
+	readonly tabLength: number;
+	readonly indent: string;
+	readonly continuationIndent: string;
+	readonly keepIntentsOnEmptyLines: boolean;
+	readonly emptyLinesBetweenBlocks: number;
+	readonly wrapOn: number;
 	
 	constructor(codeStyle: CodeStyle = DEF_CODE_STYLE) {
 		initCodeStyle(this, codeStyle);
-		this.textWrap = new TextWrap(codeStyle);
+		this.wrapper = new TextWrap(codeStyle);
 	}
 	
-	form(element: HTMLElement) {
-		this.formR(element, null);
+	beautify(element: HTMLElement): string {
+		return this.beautifyR(element, null);
 	}
 	
-	formR(element: HTMLElement, parentIndents: string): HTMLElement {
-		if (!BeautifyHtml.BLOCKS.test(element.nodeName)) return element;
+	/**
+	 * @param element - Must a block element like `<div>`, `<p>`, `<h1>` (not inline like `<b>`, `<i>`, `<a>`).
+	 * See {@link #BLOCKS} variable.
+	 * @param parentIndents - Set to `null` if you want to beautify `innerHTML` only.
+	 */
+	beautifyR(element: HTMLElement, parentIndents: string): string { if (!BeautifyHtml.BLOCKS.test(element.nodeName)) console.error('false');
+		//if (!BeautifyHtml.BLOCKS.test(element.nodeName)) return element.outerHTML;
 		
 		let indents: string;
 		let preFirst: string;
 		let sufLast: string;
+		let openTag: string;
+		let closeTag: string;
 		
 		if (parentIndents === null)
-			indents = preFirst = sufLast = '';
+			indents = preFirst = sufLast = openTag = closeTag = '';
 		else {
 			indents = parentIndents + this.indent;
 			preFirst = '\n' + indents;
 			sufLast = '\n' + parentIndents;
+			openTag = getOpenTag(element);
+			closeTag = `</${element.tagName.toLowerCase()}>`;
 		}
 		
 		const blockSeparator =
@@ -101,38 +112,95 @@ export class BeautifyHtml implements CodeStyle {
 				previousIsBlock = false;
 				
 				let text = '';
-				for (let j = i0; j <= i; ++j) {
-					node = nodes[j];
-					
-					if (node.nodeType === Node.ELEMENT_NODE) {
+				
+				if (this.wrapOn === 0) {
+					for (let j = i0; j <= i; ++j) {
+						node = nodes[j];
+						
+						if (node.nodeType !== Node.ELEMENT_NODE) {
+							text += node.nodeValue;
+							continue;
+						}
+						
 						text += (<HTMLElement>node).outerHTML;
+					}
+					
+					if (text === separator) {
+						output += text; //console.debug(JSON.stringify(output));
+						continue;
+					}
+				}
+				else {
+					let originalText = '';
+					let manipulatedText = '';
+					
+					for (let j = i0; j <= i; ++j) {
+						node = nodes[j];
+						
+						if (node.nodeType !== Node.ELEMENT_NODE) {
+							let nodeValue = node.nodeValue;
+							originalText += nodeValue;
+							
+							// Don't wrap spaces in [![...]
+							nodeValue = nodeValue.replace(/(\[!\[\S*?)(\s+)(\S*?])/g, '$1●$3');
+							manipulatedText += nodeValue;
+							continue;
+						}
+						
+						const outerHtml = (<HTMLElement>node).outerHTML;
+						originalText += outerHtml;
+						
+						const innerHtml = (<HTMLElement>node).innerHTML;
+						const length = outerHtml.length;
+						
+						const openTagLength = outerHtml[length - 2] === '/' ?
+								length : 
+								length - innerHtml.length - (node.nodeName.length + 3);
+						let openTag = outerHtml.slice(0, openTagLength);
+						
+						// Don't wrap spaces in <html open tags> (or <self-closing tags />)
+						openTag = openTag.replace(/\s/g, '●');
+						
+						manipulatedText += openTag + outerHtml.slice(openTagLength);
+					}
+					
+					if (originalText === separator) {
+						output += originalText; //console.debug(JSON.stringify(output));
 						continue;
 					}
 					
-					text += node.nodeValue; //console.debug(JSON.stringify(text));
+					const wrapResult = this.wrapper.wrap(manipulatedText, indents);
+					const markers = wrapResult.markers;
+					
+					let m = 0;
+					const absContinuationIndents = indents + this.continuationIndent;  // abs: absolute (not relative to `indents`)
+					for (const marker of markers) {
+						if (m > 0) text += absContinuationIndents;
+						text += originalText.slice(m, marker) + '\n';
+						if (marker===307) {
+							console.log(originalText.slice(m, marker))
+						}
+						m = marker;
+					}
+					if (m > 0) text += absContinuationIndents;
+					text += originalText.slice(m);
 				}
+				//console.log(text);
 				
-				if (text === separator) {
-					output += text; //console.debug(JSON.stringify(output));
-					continue;
-				}
-				
-				const wrappedText = this.wrapOn === 0 ? text : this.textWrap.wrap(text, indents);
-				
-				const start = /^\s*/.exec(wrappedText)[0];
-				if (start.length === wrappedText.length) { // If text only contains white spaces
+				const start = /^\s*/.exec(text)[0];
+				if (start.length === text.length) { // If text only contains white spaces
 					output += separator; //console.debug(JSON.stringify(output));
 					continue;
 				}
-				const end = /\s*$/.exec(wrappedText)[0];
+				const end = /\s*$/.exec(text)[0];
 				
-				//console.debug(wrappedText !== text);console.debug(JSON.stringify(start));console.debug(JSON.stringify(end));
+				//console.debug(text !== text);console.debug(JSON.stringify(start));console.debug(JSON.stringify(end));
 				output +=
-						wrappedText === text && start === pre && end === suf ?
-								wrappedText :
-								pre + wrappedText.slice(start.length, wrappedText.length - end.length) + suf;
+						start === pre && end === suf ?
+								text :
+								pre + text.slice(start.length, text.length - end.length) + suf;
 				
-				//console.debug(JSON.stringify(output));
+				//console.log(output);
 				continue;
 			}
 			
@@ -140,114 +208,37 @@ export class BeautifyHtml implements CodeStyle {
 			
 			previousIsBlock = true;
 			
-			output += this.formR(<HTMLElement>node, indents).outerHTML;
+			output += this.beautifyR(<HTMLElement>node, indents);
 			
 			if (i === l_1) output += separator;
 		}
 		
-		if (output !== element.innerHTML) element.innerHTML = output;
+		//console.debug(output); //console.debug(JSON.stringify(output));
 		
-		return element;
+		return openTag + output + closeTag; //console.debug(openTag + output + closeTag);
 	}
 }
 
-class TextWrap implements CodeStyle {
-	private readonly tabLength_1: number;
-	private readonly continuationIndentLength: number;
-	
-	readonly indent                  : string;
-	readonly continuationIndent      : string;
-	readonly keepIntentsOnEmptyLines : boolean;
-	readonly emptyLinesBetweenBlocks : number;
-	readonly tabLength               : number;
-	readonly wrapOn                  : number;
-	
-	constructor(codeStyle: CodeStyle = DEF_CODE_STYLE) {
-		initCodeStyle(this, codeStyle);
-		this.tabLength_1 = this.tabLength - 1;
-		
-		this.continuationIndentLength = this.calculateSpaceLength(this.continuationIndent);
-	}
-	
-	private calculateSpaceLength(s: string) {
-		return s.length + this.tabLength_1 * (s.split('\t').length - 1);  // (s.split('\t').length-1) counts occurrences of '\t' in `s`
-	}
-	
-	wrap(text: string, indents: string): string { return text;
-		let len0 = this.wrapOn - this.calculateSpaceLength(indents);
-		
-		let line0 = text.substr(0, len0);
-		let n = line0.split('\t').length - 1;	// Count occurrences of '\t' in `line0`
-		len0 -= n * this.tabLength_1;
-		if (n > 0) line0 = line0.slice(0, len0);
-		
-		let restText = text.slice(len0);
-		
-		let lf = 0;
-		
-		n = line0.indexOf('\n');
-		if (n !== -1) {
-			lf = 1;
-		} else {
-			let match = /\s\S*?$/.exec(line0);
-			
-			if (match === null) {
-				// Find first occurrence of white-spaces at the rest of the text:
-				match = /\s+/.exec(restText);
-				
-				if (match === null) {
-					n = text.length;
-					//---------------------
-				} else {
-					n = match[0].indexOf('\n');
-					if (n === -1) {
-						n = match.index + match[0].length;
-					} else {
-						lf = 1;
-						n += match.index;
-					}
-					//---------
-				}
-			} else {
-				n = match.index;
-				
-				if (n === line0.length) {
-				} else {
-					//------------------
-				}
-			}
-		}
-		
-		line0 = line0.slice(0, n);
-		
-		
-		const len = len0 - this.continuationIndentLength;
-	}
-}
-
-export interface CodeStyle {
-	indent                    : string;
-	continuationIndent        : string;
-	keepIntentsOnEmptyLines   : boolean;
-	emptyLinesBetweenBlocks   : number;
-	tabLength                 : number;
-	wrapOn                    : number;
+export interface CodeStyle extends WrapStyle {
+	indent                 : string;
+	keepIntentsOnEmptyLines: boolean;
+	emptyLinesBetweenBlocks: number;
 }
 
 export const DEF_CODE_STYLE: CodeStyle = {
-	indent                    : '\t',
-	continuationIndent        : '',
-	keepIntentsOnEmptyLines   : true,
-	emptyLinesBetweenBlocks   : 1,
-	tabLength                 : 4,
-	wrapOn                    : 100,
+	indent: '\t',
+	continuationIndent: '',
+	keepIntentsOnEmptyLines: true,
+	emptyLinesBetweenBlocks: 1,
+	tabLength: 4,
+	wrapOn: 120,
 };
 
 export function initCodeStyle(target: CodeStyle, source: CodeStyle) {
-	target.indent                  = source.indent                  || DEF_CODE_STYLE.indent                 ;
-	target.continuationIndent      = source.continuationIndent      || DEF_CODE_STYLE.continuationIndent     ;
+	target.indent = source.indent || DEF_CODE_STYLE.indent;
+	target.continuationIndent = source.continuationIndent || DEF_CODE_STYLE.continuationIndent;
 	target.keepIntentsOnEmptyLines = source.keepIntentsOnEmptyLines || DEF_CODE_STYLE.keepIntentsOnEmptyLines;
 	target.emptyLinesBetweenBlocks = source.emptyLinesBetweenBlocks || DEF_CODE_STYLE.emptyLinesBetweenBlocks;
-	target.tabLength               = source.tabLength               || DEF_CODE_STYLE.tabLength              ;
-	target.wrapOn                  = source.wrapOn                  || DEF_CODE_STYLE.wrapOn                 ;
+	target.tabLength = source.tabLength || DEF_CODE_STYLE.tabLength;
+	target.wrapOn = source.wrapOn || DEF_CODE_STYLE.wrapOn;
 }
