@@ -18,9 +18,9 @@
   },
   "homepage": "https://github.com/live-html-editor/live-html-editor#readme",
   "dependencies": {
-    "@live-html-editor/browser": "0.1.1"
+    "@live-html-editor/browser": "0.1.2"
   },
   "devDependencies": {
-    "@live-html-editor/server": "0.1.1"
+    "@live-html-editor/server": "0.1.2"
   }
 }
