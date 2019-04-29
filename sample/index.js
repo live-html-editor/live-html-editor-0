@@ -36,7 +36,10 @@ function initPage() {
 				// 'md', etc) 'raw' is default.
 				writeMethod: 'markdown', // Default for `.md` files
 			},
-		]
+		],
+		codeStyle: {
+			wrapOn: 0,
+		}
 	});
 	
 	// noinspection JSUnresolvedFunction, JSUnresolvedVariable, ES6ModulesDependencies

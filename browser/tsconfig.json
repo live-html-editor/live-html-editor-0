@@ -4,6 +4,11 @@
 		"noImplicitAny": true,
 		"module": "es6",
 		"target": "es6",
+		"lib": [
+			"es2018",
+			"dom",
+			"dom.iterable"
+		],
 		"allowJs": true,
 		"sourceMap": true
 	},

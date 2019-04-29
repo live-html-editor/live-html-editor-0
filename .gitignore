@@ -1,6 +1,7 @@
 /.idea/
 node_modules/
 dist/
+tsc-out/
 /test*
 /.hgignore
 /.hg/
