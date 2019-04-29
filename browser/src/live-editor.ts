@@ -1,7 +1,7 @@
-import {Draggable, getCookie, setCookie, TOOLS_POSITION} from './utilities';
+import {Draggable, getCookie, initiateObject, setCookie, TOOLS_POSITION} from './utilities';
 import {styleSheet} from './css';
 import {htmlSourceOfTools} from './html';
-import {BeautifyHtml, CodeStyle, DEF_CODE_STYLE, initCodeStyle} from "./BeautifyHtml";
+import {BeautifyHtml, CodeStyle, DEF_CODE_STYLE} from "./BeautifyHtml";
 
 /**
  * @author [S. Mahdi Mir-Ismaili](https://mirismaili.github.io).
@@ -22,8 +22,8 @@ class EditorManager implements Options {
 	
 	// noinspection JSUnusedGlobalSymbols
 	config(options: Options = DEF_OPTIONS) {
-		initOptions(this, options);
-
+		initiateObject(this, options, DEF_OPTIONS);
+		
 		this.beautifier = new BeautifyHtml(this.codeStyle);
 		
 		//**********************************************************************************/
@@ -93,7 +93,7 @@ class EditorManager implements Options {
 		const beatifiedHtml = this.beautifier.beautify(editable);
 		
 		if (!this.validateMode(editable)) return;
-
+		
 		const req: Req = {
 			htmlDocument: beatifiedHtml,
 			
@@ -181,26 +181,16 @@ class EditorManager implements Options {
 export const editorManager = new EditorManager();
 
 interface Options {
-	serverUrl  : string;
-	codeStyle  : CodeStyle;
+	serverUrl: string;
+	codeStyle: CodeStyle;
 	sourceFiles: SourceFile[];
 }
 
 export const DEF_OPTIONS: Options = {
-	serverUrl  : 'http://127.0.0.1:3000',
-	codeStyle  : DEF_CODE_STYLE,
+	serverUrl: 'http://127.0.0.1:3000',
+	codeStyle: DEF_CODE_STYLE,
 	sourceFiles: [],
 };
-
-export function initOptions(target: Options, source: Options) {
-	target.serverUrl   = source.serverUrl   || DEF_OPTIONS.serverUrl  ;
-	target.sourceFiles = source.sourceFiles || DEF_OPTIONS.sourceFiles;
-	
-	if (source.codeStyle)
-		initCodeStyle(target.codeStyle, source.codeStyle);
-	else
-		target.codeStyle = DEF_OPTIONS.codeStyle;
-}
 
 interface SourceFile {
 	path: string;

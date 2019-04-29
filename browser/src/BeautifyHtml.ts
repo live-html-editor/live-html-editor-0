@@ -1,5 +1,5 @@
 import {TextWrap, WrapStyle} from "./TextWrap";
-import {getOpenTag} from "./utilities";
+import {getOpenTag, initiateObject} from "./utilities";
 
 /**
  * @author [S. Mahdi Mir-Ismaili](https://mirismaili.github.io).
@@ -21,7 +21,7 @@ export class BeautifyHtml implements CodeStyle {
 	readonly wrapOn: number;
 	
 	constructor(codeStyle: CodeStyle = DEF_CODE_STYLE) {
-		initCodeStyle(this, codeStyle);
+		initiateObject(this, codeStyle, DEF_CODE_STYLE);
 		this.wrapper = new TextWrap(codeStyle);
 	}
 	
@@ -233,12 +233,3 @@ export const DEF_CODE_STYLE: CodeStyle = {
 	tabLength: 4,
 	wrapOn: 120,
 };
-
-export function initCodeStyle(target: CodeStyle, source: CodeStyle) {
-	target.indent = source.indent || DEF_CODE_STYLE.indent;
-	target.continuationIndent = source.continuationIndent || DEF_CODE_STYLE.continuationIndent;
-	target.keepIntentsOnEmptyLines = source.keepIntentsOnEmptyLines || DEF_CODE_STYLE.keepIntentsOnEmptyLines;
-	target.emptyLinesBetweenBlocks = source.emptyLinesBetweenBlocks || DEF_CODE_STYLE.emptyLinesBetweenBlocks;
-	target.tabLength = source.tabLength || DEF_CODE_STYLE.tabLength;
-	target.wrapOn = source.wrapOn || DEF_CODE_STYLE.wrapOn;
-}
